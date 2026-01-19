@@ -12,6 +12,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const require = createRequire(__dirname)
 require(join(__dirname, './package.json'))
 
+// ================================
+// ===== ANIMACIÓN DE INICIO ======
+// ================================
+
 async function barraCargaEmpire() {
   const frames = [
     '[⚙️] Iniciando núcleo Empire...',
@@ -88,8 +92,8 @@ function start(file) {
   if (isRunning) return
   isRunning = true
 
-  // 👉 AQUÍ SE USA LA CARPETA "imperio"
-  let args = [join(__dirname, 'imperio', file), ...process.argv.slice(2)]
+  // 👉 EJECUTA EL start.js REAL DEL BOT (RAÍZ)
+  let args = [join(__dirname, file), ...process.argv.slice(2)]
 
   setupMaster({ exec: args[0], args: args.slice(1) })
   let p = fork()
@@ -115,4 +119,5 @@ if (!existsSync(archivoArranque)) {
 // ========= INICIAR BOT ==========
 // ================================
 
-start('start.js')
+// ⚠️ AQUÍ DEBE IR EL ARCHIVO REAL QUE INICIA BAILEYS
+start('main.js') // ⬅️ cambia a main.js / index.js / bot.js según tu proyecto
