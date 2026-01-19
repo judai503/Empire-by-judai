@@ -78,23 +78,41 @@ async function iniciarEmpire() {
   await new Promise(res => setTimeout(res, 800))
 }
 
+// ================================
+// ========== CLUSTER =============
+// ================================
+
 let isRunning = false
+
 function start(file) {
   if (isRunning) return
   isRunning = true
-  let args = [join(__dirname, file), ...process.argv.slice(2)]
+
+  // 👉 AQUÍ SE USA LA CARPETA "imperio"
+  let args = [join(__dirname, 'imperio', file), ...process.argv.slice(2)]
+
   setupMaster({ exec: args[0], args: args.slice(1) })
   let p = fork()
+
   p.on('exit', (_, code) => {
     isRunning = false
     if (code !== 0) start(file)
   })
 }
 
+// ================================
+// ========= BOOT SCREEN ==========
+// ================================
+
 const archivoArranque = './.arranque-ok'
+
 if (!existsSync(archivoArranque)) {
   await iniciarEmpire()
   writeFileSync(archivoArranque, 'EMPIRE_READY')
 }
+
+// ================================
+// ========= INICIAR BOT ==========
+// ================================
 
 start('start.js')
