@@ -12,10 +12,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const require = createRequire(__dirname)
 require(join(__dirname, './package.json'))
 
-// ================================
-// ===== ANIMACIÓN DE INICIO ======
-// ================================
-
 async function barraCargaEmpire() {
   const frames = [
     '[⚙️] Iniciando núcleo Empire...',
@@ -64,7 +60,6 @@ chalk.hex('#FFD700')(`
 
 async function iniciarEmpire() {
   console.clear()
-
   console.log(chalk.bold.yellowBright('\n⟦ 👑 ACCESO CONCEDIDO | EMPIRE CORE V1 ⟧'))
   console.log(chalk.gray('⌬ Iniciando sistemas imperiales...'))
   await new Promise(res => setTimeout(res, 600))
@@ -82,42 +77,23 @@ async function iniciarEmpire() {
   await new Promise(res => setTimeout(res, 800))
 }
 
-// ================================
-// ========== CLUSTER =============
-// ================================
-
 let isRunning = false
-
 function start(file) {
   if (isRunning) return
   isRunning = true
-
-  // 👉 EJECUTA EL start.js REAL DEL BOT (RAÍZ)
   let args = [join(__dirname, file), ...process.argv.slice(2)]
-
   setupMaster({ exec: args[0], args: args.slice(1) })
   let p = fork()
-
   p.on('exit', (_, code) => {
     isRunning = false
     if (code !== 0) start(file)
   })
 }
 
-// ================================
-// ========= BOOT SCREEN ==========
-// ================================
-
 const archivoArranque = './.arranque-ok'
-
 if (!existsSync(archivoArranque)) {
   await iniciarEmpire()
   writeFileSync(archivoArranque, 'EMPIRE_READY')
 }
 
-// ================================
-// ========= INICIAR BOT ==========
-// ================================
-
-// ⚠️ AQUÍ DEBE IR EL ARCHIVO REAL QUE INICIA BAILEYS
-start('main.js') // ⬅️ cambia a main.js / index.js / bot.js según tu proyecto
+start('start.js')
