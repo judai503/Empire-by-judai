@@ -1,4 +1,4 @@
-//adaptado para VEGETA-BOT-MB por BrayanOFC 
+
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '1'
 import './config.js'
 import { setupMaster, fork } from 'cluster'
@@ -11,7 +11,7 @@ import fs, { readdirSync, statSync, unlinkSync, existsSync, mkdirSync, readFileS
 import yargs from 'yargs'
 import { spawn, execSync } from 'child_process'
 import lodash from 'lodash'
-import { vegetaJadiBot } from './plugins/jadibot-serbot.js'
+import { EmpiereJadiBot } from './plugins/jadibot-serbot.js'
 import chalk from 'chalk'
 import syntaxerror from 'syntax-error'
 import { tmpdir } from 'os'
@@ -38,14 +38,14 @@ const { chain } = lodash
 const PORT = process.env.PORT || process.env.SERVER_PORT || 3000
 
 console.log(chalk.bold.redBright(`
-╭━━━〔⚡️ Gaara-Ultra-MD Conexión ⚡️〕━━━⬣
+╭━━━〔⚡️ Judai-Empiere Conexión ⚡️〕━━━⬣
 ┃ ✅️ Sistema ACTIVADO con éxito
 ┃ 🚀 ¡Prepárate para dominar con Ultra!
 ╰━━━━━━━━━━━━━━━━━━━━━━⬣
 `))
 
 console.log(chalk.bold.magentaBright('╭━━━〔 👑 INFO CREADOR 👑 〕━━━⬣'))
-console.log(chalk.bold.cyanBright('┃ ✦ Desarrollado por xzzys26 👑'))
+console.log(chalk.bold.cyanBright('┃ ✦ Desarrollado por El Tio Judai👑'))
 console.log(chalk.bold.magentaBright('╰━━━━━━━━━━━━━━━━━━━━━━⬣\n'))
 
 protoType()
@@ -491,7 +491,7 @@ unlinkSync(`./${jadi}/${directorio}/${fileInDir}`)
 }})
 }})
 if (SBprekey.length === 0) {
-console.log(chalk.bold.green(`\n⚡ No hay archivos en ${jadi} para eliminar Gaara Ultra.`))
+console.log(chalk.bold.green(`\n⚡ No hay archivos en ${jadi} para eliminar Empire Judai.`))
 } else {
 console.log(chalk.bold.cyanBright(`\n⌦ Archivos de la carpeta ${jadi} han sido eliminados correctamente.`))
 }} catch (err) {
@@ -499,7 +499,7 @@ console.log(chalk.bold.red(`\n⚠︎ Error para eliminar archivos de la carpeta 
 }}
 
 function purgeOldFiles() {
-const directories = [`./${vegetasessions}/`, `./${jadi}/`]
+const directories = [`./${empiresessions}/`, `./${jadi}/`]
 directories.forEach(dir => {
 readdirSync(dir, (err, files) => {
 if (err) throw err
@@ -529,7 +529,7 @@ console.log(chalk.bold.cyanBright(`\n⌦ Archivos de la carpeta TMP no necesario
 setInterval(async () => {
 if (stopped === 'close' || !conn || !conn.user) return
 await purgeSession()
-console.log(chalk.bold.cyanBright(`\n⌦ Archivos de la carpeta ${global.vegetasessions} no necesario han sido eliminados del servidor.`))}, 1000 * 60 * 10)
+console.log(chalk.bold.cyanBright(`\n⌦ Archivos de la carpeta ${global.empiresessions} no necesario han sido eliminados del servidor.`))}, 1000 * 60 * 10)
 setInterval(async () => {
 if (stopped === 'close' || !conn || !conn.user) return
 await purgeSessionSB()}, 1000 * 60 * 10) 
