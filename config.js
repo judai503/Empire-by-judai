@@ -1,119 +1,97 @@
-import { watchFile, unwatchFile } from 'fs'
+import { watchFile, unwatchFile } from 'fs' 
 import chalk from 'chalk'
 import { fileURLToPath } from 'url'
-import fs from 'fs' 
-import cheerio from 'cheerio'
+import fs from 'fs'
 import fetch from 'node-fetch'
 import axios from 'axios'
-import moment from 'moment-timezone'
+import moment from 'moment-timezone' 
 
-//*─✞─ CONFIGURACIÓN GLOBAL ─✞─*
+//*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
 
-// Número del bot
-global.botNumber = '' // Ejemplo: 525568138672
+//BETA: Si quiere evitar escribir el número que será bot en la consola, agregué desde aquí entonces:
+//Sólo aplica para opción 2 (ser bot con código de texto de 8 digitos)
+global.botNumber = '' //Ejemplo: 573218138672
 
-//*─✞─ OWNERS ─✞─*
+//*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
+
 global.owner = [
-  ['50360438371', '👑 El Tío Judai', true],
+// <-- Número @s.whatsapp.net -->
+  ['5036043837@', 'Xzzys26 Creador', true],
   [''],
-  ['', '', false],
-  ['', 'nombere', true],
-  ['', '', false]
-]
-global.mods = ['']
-global.suittag = ['']
-global.prems = ['']
+  [''],
 
-//*─✞─ INFO DEL SISTEMA ─✞─*
+// <-- Número @lid -->
+  ['267924371669220', 'El tio Judai', true],
+  ['', '', true], 
+  ['', '', true]
+];
+
+//*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
+
+global.mods = []
+global.suittag = ['18493907272'] 
+global.prems = []
+
+//*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
+
 global.libreria = 'Baileys'
-global.baileys = 'V 6.7.9'
+global.baileys = 'V 6.7.17'  
 global.languaje = 'Español'
-global.vs = '2.2.0'
+global.vs = '2.13.2'
 global.vsJB = '5.0'
+global.nameqr = 'Empire' 
+global.namebot = 'Empire'
+global.empiresessions = 'Empire'
+global.jadi = 'JadiBots' 
+global.empireJadibts = true
 
-//*─✞─ NOMBRES DEL PROYECTO ─✞─*
-global.nameqr = 'Empire-Bot'
-global.sessions = 'empireSession'
-global.jadi = 'empireJadiBot'
-global.blackJadibts = true
+//*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
 
-//*─✞─ STICKERS ─✞─*
-global.packsticker = `
-  👑 𝑬𝑴𝑷𝑰𝑹𝑬 𝑴𝑫 — El Tío Judai`
+global.packname = `Empire by Judai`
+global.botname = 'Empire'
+global.dev = 'By El Tio Judai'
+global.textbot = 'By Judai'
 
-global.packname = '👑 𝑬𝑴𝑷𝑰𝑹𝑬 𝑴𝑫'
+//*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
 
-global.author = `
-♾━━━━━━━━━━━━━━━♾`
+global.moneda = 'coin'
+global.welcom1 = '𝙀𝙙𝙞𝙩𝙖 𝘾𝙤𝙣 𝙀𝙡 𝘾𝙤𝙢𝙖𝙣𝙙𝙤 𝙎𝙚𝙩𝙬𝙚𝙡𝙘𝙤𝙢𝙚'
+global.welcom2 = '𝙀𝙙𝙞𝙩𝙖 𝘾𝙤𝙣 𝙀𝙡 𝘾𝙤𝙢𝙖𝙣𝙙𝙤 𝙎𝙚𝙩𝙗𝙮𝙚'
+global.banner = 'https://files.catbox.moe/j0z1kz.jpg'
+global.catalogo = 'https://files.catbox.moe/j0z1kz.jpg'
 
-//*─✞─ TEXTOS DEL BOT ─✞─*
-global.wm = '👑 𝑬𝑴𝑷𝑰𝑹𝑬 𝑴𝑫'
-global.titulowm = '👑 𝑬𝑴𝑷𝑰𝑹𝑬 𝑴𝑫'
-global.igfg = 'El Tío Judai'
-global.botname = '👑 𝑬𝑴𝑷𝑰𝑹𝑬 𝑴𝑫'
-global.dev = '© Powered by El Tío Judai ⚡'
-global.textbot = '👑 𝑬𝑴𝑷𝑰𝑹𝑬 𝑴𝑫 : El Tío Judai'
-global.gt = '͟͞👑 𝑬𝑴𝑷𝑰𝑹𝑬 𝑴𝑫͟͞'
-global.namechannel = '👑 EMPIRE — El Tío Judai'
+//*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒──ׄ─ׅ─ׄ─
 
-// Moneda interna
-global.monedas = 'monedas'
-
-//*─✞─ LINKS ─✞─*
-global.gp1 = 'https://chat.whatsapp.com/IbADO35sBSC4G1FBTGbHIE?mode=ac_t'
-global.gp2 = 'https://chat.whatsapp.com/FiBcPMYEO7mG4m16gBbwpP?mode=ac_t'
-global.comunidad1 = 'https://chat.whatsapp.com/FgQ4q11AjaO8ddyc1LvK4r?mode=ac_t'
-
-// ✅ NUEVO CANAL
-global.channel = 'https://whatsapp.com/channel/0029Vb6WpKMFXUuVwH7Hny3r'
-global.cn = global.channel
-
-global.yt = ''
+global.gp1 = 'ww'
+global.comunidad1 = ''
+global.channel = ''
+global.channel2 = ''
 global.md = 'https://github.com/judai503/Empire-by-judai'
 global.correo = ''
 
-//*─✞─ IMAGEN ─✞─*
-global.catalogo = fs.readFileSync(new URL('../src/catalogo.jpg', import.meta.url))
-global.photoSity = [global.catalogo]
+//*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
 
-//*─✞─ MENSAJE ESTILO ─✞─*
-global.estilo = { 
-  key: {  
-    fromMe: false, 
-    participant: '0@s.whatsapp.net'
-  }, 
-  message: { 
-    orderMessage: { 
-      itemCount: -999999, 
-      status: 1, 
-      surface: 1, 
-      message: global.packname, 
-      orderTitle: 'Empire', 
-      thumbnail: global.catalogo, 
-      sellerJid: '0@s.whatsapp.net'
-    }
-  }
+// global.catalogo = fs.readFileSync('./src/catalogo.jpg')
+global.estilo = { key: {  fromMe: false, participant: `0@s.whatsapp.net`, ...(false ? { remoteJid: "5219992095479-1625305606@g.us" } : {}) }, message: { orderMessage: { itemCount : -999999, status: 1, surface : 1, message: global.packname, orderTitle: 'Bang', thumbnail: global.catalogo, sellerJid: '0@s.whatsapp.net'}}}
+global.ch = {
+ch1: '',
+ch2: "",
+ch3: ""
 }
+global.multiplier = 60
 
-//*─✞─ CANAL ─✞─*
-global.ch = { ch1: "120363000000000000@newsletter" }
-global.rcanal = global.ch.ch1
+//*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
 
-//*─✞─ LIBRERÍAS GLOBALES ─✞─*
-global.cheerio = cheerio
 global.fs = fs
 global.fetch = fetch
 global.axios = axios
-global.moment = moment
+global.moment = moment   
 
-//*─✞─ NIVELES ─✞─*
-global.multiplier = 69
-global.maxwarn = 3
+//*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
 
-//*─✞─ AUTO-RELOAD ─✞─*
-const file = fileURLToPath(import.meta.url)
+let file = fileURLToPath(import.meta.url)
 watchFile(file, () => {
   unwatchFile(file)
-  console.log(chalk.redBright("♻️ Se actualizó 'imperio/config.js'"))
+  console.log(chalk.redBright("Update 'config.js'"))
   import(`${file}?update=${Date.now()}`)
 })
