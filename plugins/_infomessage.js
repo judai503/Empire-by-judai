@@ -1,95 +1,179 @@
-let WAMessageStubType = (await import('@whiskeysockets/baileys')).default
+import WAMessageStubType from '@whiskeysockets/baileys'
 import chalk from 'chalk'
 import fs from 'fs'
 import path from 'path'
-import fetch from 'node-fetch'
 
-const groupMetadataCache = new Map()
+/* ================= BOT EMPIRE | MARCA ================= */
+const MARCA = `
+━━━━━━━━━━━━━━━━━━━━
+🤖 𝗕𝗢𝗧 𝗘𝗠𝗣𝗜𝗥𝗘
+⚡ 𝗣𝗢𝗪𝗘𝗥𝗘𝗗 𝗕𝗬 𝗝𝗨𝗗𝗔𝗜 ⚡
+🚫 𝗣𝗥𝗢𝗛𝗜𝗕𝗜𝗗𝗔 𝗦𝗨 𝗩𝗘𝗡𝗧𝗔
+━━━━━━━━━━━━━━━━━━━━
+`
+
+/* ================= MENSAJES ================= */
+const MSG = {
+  nombre: (u, n) => `${MARCA}
+
+╭─「 📛 𝗚𝗥𝗨𝗣𝗢 𝗔𝗖𝗧𝗨𝗔𝗟𝗜𝗭𝗔𝗗𝗢 」─╮
+│ 👤 Usuario: @${u}
+│ 📝 Nuevo nombre:
+│ ➤ ${n}
+╰─ ✦ BOT EMPIRE ✦ ─╯`,
+
+  foto: u => `${MARCA}
+
+╭─「 🖼️ 𝗜𝗠𝗔𝗚𝗘𝗡 𝗔𝗖𝗧𝗨𝗔𝗟𝗜𝗭𝗔𝗗𝗔 」─╮
+│ 👤 Acción realizada por:
+│ ➤ @${u}
+╰─ ✦ BOT EMPIRE ✦ ─╯`,
+
+  link: u => `${MARCA}
+
+╭─「 🔗 𝗘𝗡𝗟𝗔𝗖𝗘 𝗥𝗘𝗦𝗧𝗔𝗕𝗟𝗘𝗖𝗜𝗗𝗢 」─╮
+│ 👤 Acción realizada por:
+│ ➤ @${u}
+│ ⚠️ El enlace anterior fue invalidado
+╰─ ✦ BOT EMPIRE ✦ ─╯`,
+
+  config: (u, m) => `${MARCA}
+
+╭─「 ⚙️ 𝗖𝗢𝗡𝗙𝗜𝗚𝗨𝗥𝗔𝗖𝗜𝗢́𝗡 」─╮
+│ 👤 Modificado por: @${u}
+│ 🔧 Permisos:
+│ ➤ ${m == 'on' ? '𝗦𝗼𝗹𝗼 𝗮𝗱𝗺𝗶𝗻𝘀' : '𝗧𝗼𝗱𝗼𝘀'}
+╰─ ✦ BOT EMPIRE ✦ ─╯`,
+
+  estado: (u, m) => `${MARCA}
+
+╭─「 ${m == 'on' ? '🔒 𝗚𝗥𝗨𝗣𝗢 𝗖𝗘𝗥𝗥𝗔𝗗𝗢' : '🔓 𝗚𝗥𝗨𝗣𝗢 𝗔𝗕𝗜𝗘𝗥𝗧𝗢'} 」─╮
+│ 👤 Acción: @${u}
+│ 💬 Mensajes:
+│ ➤ ${m == 'on' ? '𝗦𝗼𝗹𝗼 𝗮𝗱𝗺𝗶𝗻𝘀' : '𝗧𝗼𝗱𝗼𝘀'}
+╰─ ✦ BOT EMPIRE ✦ ─╯`,
+
+  admin: (u, t) => `${MARCA}
+
+╭─「 👑 𝗡𝗨𝗘𝗩𝗢 𝗔𝗗𝗠𝗜𝗡 」─╮
+│ 🙋 Usuario: @${t}
+│ 👤 Asignado por: @${u}
+╰─ ✦ BOT EMPIRE ✦ ─╯`,
+
+  noadmin: (u, t) => `${MARCA}
+
+╭─「 🚫 𝗔𝗗𝗠𝗜𝗡 𝗥𝗘𝗠𝗢𝗩𝗜𝗗𝗢 」─╮
+│ 🙋 Usuario: @${t}
+│ 👤 Acción: @${u}
+╰─ ✦ BOT EMPIRE ✦ ─╯`
+}
+
+/* ================= HANDLER ================= */
 const lidCache = new Map()
 const handler = m => m
-handler.before = async function (m, { conn, participants, groupMetadata }) {
-if (!m.messageStubType || !m.isGroup) return
-const primaryBot = global.db.data.chats[m.chat].primaryBot
-if (primaryBot && conn.user.jid !== primaryBot) throw !1
-const chat = global.db.data.chats[m.chat]
-const users = m.messageStubParameters[0]
-const usuario = await resolveLidToRealJid(m?.sender, conn, m?.chat)
-const groupAdmins = participants.filter(p => p.admin)
-const rcanal = { contextInfo: { isForwarded: true, forwardedNewsletterMessageInfo: { newsletterJid: channelRD.id, serverMessageId: '', newsletterName: channelRD.name }, externalAdReply: { title: "𐔌 . ⋮ ᗩ ᐯ I Տ O .ᐟ ֹ ₊ ꒱", body: textbot, mediaUrl: null, description: null, previewType: "PHOTO", thumbnail: await (await fetch(icono)).buffer(), sourceUrl: redes, mediaType: 1, renderLargerThumbnail: false }, mentionedJid: null }}
-const pp = await conn.profilePictureUrl(m.chat, 'image').catch(_ => null) || 'https://files.catbox.moe/llyo8i.jpg'
-const nombre = `> ❀ @${usuario.split('@')[0]} Ha cambiado el nombre del grupo.\n> ✦ Ahora el grupo se llama:\n> *${m.messageStubParameters[0]}*.`
-const foto = `> ❀ Se ha cambiado la imagen del grupo.\n> ✦ Acción hecha por:\n> » @${usuario.split('@')[0]}`
-const edit = `> ❀ @${usuario.split('@')[0]} Ha permitido que ${m.messageStubParameters[0] == 'on' ? 'solo admins' : 'todos'} puedan configurar el grupo.`
-const newlink = `> ❀ El enlace del grupo ha sido restablecido.\n> ✦ Acción hecha por:\n> » @${usuario.split('@')[0]}`
-const status = `> ❀ El grupo ha sido ${m.messageStubParameters[0] == 'on' ? '*cerrado*' : '*abierto*'} Por @${usuario.split('@')[0]}\n> ✦ Ahora ${m.messageStubParameters[0] == 'on' ? '*solo admins*' : '*todos*'} pueden enviar mensaje.`
-const admingp = `> ❀ @${users.split('@')[0]} Ahora es admin del grupo.\n> ✦ Acción hecha por:\n> » @${usuario.split('@')[0]}`
-const noadmingp = `> ❀ @${users.split('@')[0]} Deja de ser admin del grupo.\n> ✦ Acción hecha por:\n> » @${usuario.split('@')[0]}`
-if (chat.detect && m.messageStubType == 2) {
-const uniqid = (m.isGroup ? m.chat : m.sender).split('@')[0]
-const sessionPath = `./${sessions}/`
-for (const file of await fs.promises.readdir(sessionPath)) {
-if (file.includes(uniqid)) {
-await fs.promises.unlink(path.join(sessionPath, file))
-console.log(`${chalk.yellow.bold('✎ Delete!')} ${chalk.greenBright(`'${file}'`)}\n${chalk.redBright('Que provoca el "undefined" en el chat.')}`)
-}}} if (chat.detect && m.messageStubType == 21) {
-rcanal.contextInfo.mentionedJid = [usuario, ...groupAdmins.map(v => v.id)]
-await this.sendMessage(m.chat, { text: nombre, ...rcanal }, { quoted: null })
-} if (chat.detect && m.messageStubType == 22) {
-rcanal.contextInfo.mentionedJid = [usuario, ...groupAdmins.map(v => v.id)]
-await this.sendMessage(m.chat, { image: { url: pp }, caption: foto, ...rcanal }, { quoted: null })
-} if (chat.detect && m.messageStubType == 23) {
-rcanal.contextInfo.mentionedJid = [usuario, ...groupAdmins.map(v => v.id)]
-await this.sendMessage(m.chat, { text: newlink, ...rcanal }, { quoted: null })
-} if (chat.detect && m.messageStubType == 25) {
-rcanal.contextInfo.mentionedJid = [usuario, ...groupAdmins.map(v => v.id)]
-await this.sendMessage(m.chat, { text: edit, ...rcanal }, { quoted: null })
-} if (chat.detect && m.messageStubType == 26) {
-rcanal.contextInfo.mentionedJid = [usuario, ...groupAdmins.map(v => v.id)]
-await this.sendMessage(m.chat, { text: status, ...rcanal }, { quoted: null })
-} if (chat.detect && m.messageStubType == 29) {
-rcanal.contextInfo.mentionedJid = [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean)
-await this.sendMessage(m.chat, { text: admingp, ...rcanal }, { quoted: null })
-return
-} if (chat.detect && m.messageStubType == 30) {
-rcanal.contextInfo.mentionedJid = [usuario, users, ...groupAdmins.map(v => v.id)].filter(Boolean)
-await this.sendMessage(m.chat, { text: noadmingp, ...rcanal }, { quoted: null })
-} else { 
-if (m.messageStubType == 2) return
-console.log({messageStubType: m.messageStubType,
-messageStubParameters: m.messageStubParameters,
-type: WAMessageStubType[m.messageStubType], 
-})}}
+
+handler.before = async function (m, { conn, participants }) {
+  if (!m.isGroup || !m.messageStubType) return
+
+  const chat = global.db.data.chats[m.chat]
+  if (!chat?.detect) return
+
+  if (chat.primaryBot && conn.user.jid !== chat.primaryBot) throw !1
+
+  const actor = await resolveLid(m.sender, conn, m.chat)
+  const target = m.messageStubParameters?.[0]
+  const admins = participants.filter(p => p.admin).map(p => p.id)
+
+  const actorTag = actor.split('@')[0]
+  const targetTag = target?.split('@')[0]
+
+  const mentionBase = [actor, ...admins].filter(Boolean)
+
+  switch (m.messageStubType) {
+    case 21:
+      await conn.sendMessage(m.chat, {
+        text: MSG.nombre(actorTag, target),
+        mentions: mentionBase
+      })
+      break
+
+    case 22:
+      const pp = await conn.profilePictureUrl(m.chat, 'image')
+        .catch(() => 'https://files.catbox.moe/llyo8i.jpg')
+      await conn.sendMessage(m.chat, {
+        image: { url: pp },
+        caption: MSG.foto(actorTag),
+        mentions: mentionBase
+      })
+      break
+
+    case 23:
+      await conn.sendMessage(m.chat, {
+        text: MSG.link(actorTag),
+        mentions: mentionBase
+      })
+      break
+
+    case 25:
+      await conn.sendMessage(m.chat, {
+        text: MSG.config(actorTag, target),
+        mentions: mentionBase
+      })
+      break
+
+    case 26:
+      await conn.sendMessage(m.chat, {
+        text: MSG.estado(actorTag, target),
+        mentions: mentionBase
+      })
+      break
+
+    case 29:
+      await conn.sendMessage(m.chat, {
+        text: MSG.admin(actorTag, targetTag),
+        mentions: [actor, target, ...admins].filter(Boolean)
+      })
+      break
+
+    case 30:
+      await conn.sendMessage(m.chat, {
+        text: MSG.noadmin(actorTag, targetTag),
+        mentions: [actor, target, ...admins].filter(Boolean)
+      })
+      break
+
+    case 2:
+      limpiarSesion(m.chat)
+      break
+  }
+}
 
 export default handler
 
-async function resolveLidToRealJid(lid, conn, groupChatId, maxRetries = 3, retryDelay = 60000) {
-const inputJid = lid.toString()
-if (!inputJid.endsWith("@lid") || !groupChatId?.endsWith("@g.us")) { return inputJid.includes("@") ? inputJid : `${inputJid}@s.whatsapp.net` }
-if (lidCache.has(inputJid)) { return lidCache.get(inputJid) }
-const lidToFind = inputJid.split("@")[0]
-let attempts = 0
-while (attempts < maxRetries) {
-try {
-const metadata = await conn?.groupMetadata(groupChatId)
-if (!metadata?.participants) { throw new Error("No se obtuvieron participantes") }
-for (const participant of metadata.participants) {
-try {
-if (!participant?.jid) continue
-const contactDetails = await conn?.onWhatsApp(participant.jid)
-if (!contactDetails?.[0]?.lid) continue
-const possibleLid = contactDetails[0].lid.split("@")[0]
-if (possibleLid === lidToFind) {
-lidCache.set(inputJid, participant.jid)
-return participant.jid
-}} catch (e) { continue }}
-lidCache.set(inputJid, inputJid)
-return inputJid
-} catch (e) {
-if (++attempts >= maxRetries) {
-lidCache.set(inputJid, inputJid)
-return inputJid
+/* ================= UTILIDADES ================= */
+async function resolveLid(lid, conn, chat) {
+  const jid = lid.toString()
+  if (!jid.endsWith('@lid')) return jid
+  if (lidCache.has(jid)) return lidCache.get(jid)
+
+  const meta = await conn.groupMetadata(chat)
+  for (const p of meta.participants) {
+    const w = await conn.onWhatsApp(p.id)
+    if (w?.[0]?.lid && w[0].lid === jid) {
+      lidCache.set(jid, p.id)
+      return p.id
+    }
+  }
+  return jid
 }
-await new Promise((resolve) => setTimeout(resolve, retryDelay))
-}}
-return inputJid
+
+async function limpiarSesion(chat) {
+  const id = chat.split('@')[0]
+  const dir = `./${sessions}/`
+  for (const f of await fs.promises.readdir(dir)) {
+    if (f.includes(id)) {
+      await fs.promises.unlink(path.join(dir, f))
+      console.log(chalk.redBright('🧹 Sesión limpiada:'), f)
+    }
+  }
 }
