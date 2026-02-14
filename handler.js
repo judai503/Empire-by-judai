@@ -1,57 +1,44 @@
-import { smsg } from './lib/simple.js'
-import format from 'util'
-import path from 'path'
-import fs from 'fs'
 import chalk from 'chalk'
 
-export async function handler(chatUpdate) {
-    if (!chatUpdate.messages) return
-    let m = chatUpdate.messages[chatUpdate.messages.length - 1]
-    if (!m) return
-    if (m.key.id.startsWith('BAE5') && m.key.id.length === 16) return
-    
+export async function handler(conn, chatUpdate) {
     try {
-        m = smsg(this, m) || m
-        if (!m.text) return
+        const m = chatUpdate.messages[0]
+        if (!m || !m.message) return
+        const sender = m.key.remoteJid
+        const isGroup = sender.endsWith('@g.us')
+        const body = m.message.conversation || m.message.extendedTextMessage?.text || ''
+        const isCmd = global.prefix.test(body)
+        const command = isCmd ? body.slice(1).trim().split(' ')[0].toLowerCase() : ''
 
-        // --- CARGAR SCHEMA ---
-        const { userDefault, chatDefault, settingsDefault } = JSON.parse(fs.readFileSync('./lib/schema.json'))
-
-        // --- SISTEMA DE USUARIOS ---
-        let user = global.db.data.users[m.sender]
-        if (typeof user !== 'object') global.db.data.users[m.sender] = {}
-        if (user) {
-            for (let key in userDefault) if (!(key in user)) user[key] = userDefault[key]
-        } else {
-            global.db.data.users[m.sender] = { ...userDefault }
+        // 1. SISTEMA DE DATOS (Economía y Gacha)
+        let user = global.db.data.users[m.key.participant || sender]
+        if (!user) global.db.data.users[m.key.participant || sender] = {
+            coins: 100,
+            exp: 0,
+            level: 1,
+            lastWork: 0,
+            banned: false
         }
 
-        // --- SISTEMA DE CHATS ---
-        if (m.isGroup) {
-            let chat = global.db.data.chats[m.chat]
-            if (typeof chat !== 'object') global.db.data.chats[m.chat] = {}
-            if (chat) {
-                for (let key in chatDefault) if (!(key in chat)) chat[key] = chatDefault[key]
-            } else {
-                global.db.data.chats[m.chat] = { ...chatDefault }
-            }
+        // 2. ANTI-PRIVADO (Solo responde si es el owner)
+        if (!isGroup && isCmd && !global.owner.some(o => o[0] === sender.split('@')[0])) {
+            return conn.sendMessage(sender, { text: '❌ *El Imperio no responde comandos al privado. Use los grupos oficiales.*' })
         }
 
-        // --- PLUGINS ---
-        let usedPrefix = (global.prefix.exec(m.text) || [])[0]
-        if (!usedPrefix) return
-        
-        let args = m.text.slice(usedPrefix.length).trim().split` `.slice(1)
-        let text = args.join` `
-        let command = m.text.slice(usedPrefix.length).trim().split` `[0].toLowerCase()
-
-        let plugin = Object.values(global.plugins).find(p => p.command && (Array.isArray(p.command) ? p.command.includes(command) : p.command === command))
-
-        if (plugin) {
-            await plugin.call(this, m, { conn: this, args, text, usedPrefix, command, user: global.db.data.users[m.sender] })
+        // 3. COMANDOS DE PRUEBA (Economía)
+        if (command === 'balance' || command === 'coins') {
+            await conn.sendMessage(sender, { text: `💰 *Tu Balance:* ${global.db.data.users[m.key.participant || sender].coins} EmpireCoins` })
         }
 
-    } catch (e) {
-        console.error(e)
-    }
+        if (command === 'trabajar' || command === 'work') {
+            let time = Date.now()
+            if (time - user.lastWork < 600000) return conn.sendMessage(sender, { text: '⏳ *El Imperio te ordena descansar. Vuelve en 10 min.*' })
+            let ganancia = Math.floor(Math.random() * 500)
+            user.coins += ganancia
+            user.lastWork = time
+            await conn.sendMessage(sender, { text: `⚒️ *Trabajaste duro para el Imperio!* Ganaste: ${ganancia} coins.` })
+        }
+
+        await global.db.write()
+    } catch (e) { console.error(e) }
 }
