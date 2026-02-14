@@ -1,7 +1,7 @@
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '1'
 import './settings.js'
 import './plugins/_allfake.js'
-import cfonts from 'cfonts'
+import { displayLogo } from './lib/logo.js' // Sistema visual externo
 import { createRequire } from 'module'
 import { fileURLToPath, pathToFileURL } from 'url'
 import { platform } from 'process'
@@ -27,22 +27,14 @@ const phoneUtil = PhoneNumberUtil.getInstance()
 const { DisconnectReason, useMultiFileAuthState, MessageRetryMap, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, jidNormalizedUser } = await import('@whiskeysockets/baileys')
 import readline, { createInterface } from 'readline'
 import NodeCache from 'node-cache'
+
 const { CONNECTING } = ws
 const { chain } = lodash
 const PORT = 3001
 
-let { say } = cfonts
-console.log(chalk.yellowBright('\n👑 Iniciando el Imperio...'))
-say('EMPIRE-MD', {
-font: 'BLOCK',
-align: 'center',
-gradient: ['yellow', 'orange']
-})
-say('By Judai - El Tio Judai', {
-font: 'console',
-align: 'center',
-colors: ['yellow']
-})
+// --- INICIO VISUAL ---
+displayLogo() // Llama al diseño de lib/logo.js
+
 protoType()
 serialize()
 
@@ -64,7 +56,8 @@ const __dirname = global.__dirname(import.meta.url)
 global.opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse())
 global.prefix = new RegExp('^[#!./-]')
 
-global.db = new Low(/https?:\/\//.test(global.opts['db'] || '') ? new cloudDBAdapter(global.opts['db']) : new JSONFile(path.join(__dirname, 'database', 'db.json')));
+// --- BASE DE DATOS ---
+global.db = new Low(new JSONFile(path.join(__dirname, 'database', 'db.json')));
 global.DATABASE = global.db
 global.loadDatabase = async function loadDatabase() {
 if (global.db.READ) {
@@ -88,279 +81,127 @@ global.db.chain = chain(global.db.data)
 }
 loadDatabase()
 
-const { state, saveState, saveCreds } = await useMultiFileAuthState(global.sessions || 'session')
-const msgRetryCounterMap = new Map()
+// --- AUTENTICACIÓN ---
+const sessionPath = global.sessions || 'session'
+const { state, saveState, saveCreds } = await useMultiFileAuthState(sessionPath)
 const msgRetryCounterCache = new NodeCache({ stdTTL: 0, checkperiod: 0 })
 const userDevicesCache = new NodeCache({ stdTTL: 0, checkperiod: 0 })
 const { version } = await fetchLatestBaileysVersion()
+
 let phoneNumber = global.botNumber
 const methodCodeQR = process.argv.includes("qr")
 const methodCode = !!phoneNumber || process.argv.includes("code")
-const MethodMobile = process.argv.includes("mobile")
-const colors = chalk.bold.yellow
-const qrOption = chalk.magentaBright
-const textOption = chalk.whiteBright
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 const question = (texto) => new Promise((resolver) => rl.question(texto, resolver))
+
 let opcion
-if (methodCodeQR) {
-opcion = '1'
+if (methodCodeQR) opcion = '1'
+if (!methodCodeQR && !methodCode && !fs.existsSync(`./${sessionPath}/creds.json`)) {
+    do {
+        opcion = await question(chalk.bold.yellow("Seleccione una opción de Empire:\n") + chalk.magentaBright("1. Con código QR\n") + chalk.whiteBright("2. Con código de texto (Pairing Code)\n--> "))
+    } while (opcion !== '1' && opcion !== '2')
 }
-if (!methodCodeQR && !methodCode && !fs.existsSync(`./${global.sessions || 'session'}/creds.json`)) {
-do {
-opcion = await question(colors("Seleccione una opción de Empire:\n") + qrOption("1. Con código QR\n") + textOption("2. Con código de texto de 8 dígitos\n--> "))
-if (!/^[1-2]$/.test(opcion)) {
-console.log(chalk.bold.redBright(`Opción inválida. Seleccione 1 o 2.`))
-}} while (opcion !== '1' && opcion !== '2' || fs.existsSync(`./${global.sessions || 'session'}/creds.json`))
-}
-console.info = () => {}
+
 const connectionOptions = {
-logger: pino({ level: 'silent' }),
-printQRInTerminal: opcion == '1' ? true : methodCodeQR ? true : false,
-mobile: MethodMobile,
-browser: ["Empire-By-Judai", "Safari", "2.0.0"],
-auth: {
-creds: state.creds,
-keys: makeCacheableSignalKeyStore(state.keys, Pino({ level: "fatal" }).child({ level: "fatal" })),
-},
-markOnlineOnConnect: true,
-generateHighQualityLinkPreview: true,
-syncFullHistory: false,
-getMessage: async (key) => {
-try {
-let jid = jidNormalizedUser(key.remoteJid)
-let msg = await store.loadMessage(jid, key.id)
-return msg?.message || ""
-} catch (error) {
-return ""
-}},
-msgRetryCounterCache: msgRetryCounterCache || new Map(),
-userDevicesCache: userDevicesCache || new Map(),
-defaultQueryTimeoutMs: undefined,
-cachedGroupMetadata: (jid) => global.conn.chats[jid] ?? {},
-version: version,
-keepAliveIntervalMs: 55000,
-maxIdleTimeMs: 60000,
+    logger: pino({ level: 'silent' }),
+    printQRInTerminal: opcion == '1' || methodCodeQR,
+    browser: ["Empire-MD", "Safari", "2.0.0"],
+    auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, Pino({ level: "fatal" }).child({ level: "fatal" })),
+    },
+    markOnlineOnConnect: true,
+    generateHighQualityLinkPreview: true,
+    syncFullHistory: false,
+    version,
+    msgRetryCounterCache,
+    userDevicesCache,
 }
+
 global.conn = makeWASocket(connectionOptions)
 conn.ev.on("creds.update", saveCreds)
 
-if (!fs.existsSync(`./${global.sessions || 'session'}/creds.json`)) {
-if (opcion === '2' || methodCode) {
-opcion = '2'
-if (!conn.authState.creds.registered) {
-let addNumber
-if (!!phoneNumber) {
-addNumber = phoneNumber.replace(/[^0-9]/g, '')
-} else {
-do {
-phoneNumber = await question(chalk.bgBlack(chalk.bold.yellowBright(`[ 👑 ] Por favor, ingrese el número del Imperio.\n${chalk.bold.magentaBright('---> ')}`)))
-phoneNumber = phoneNumber.replace(/\D/g, '')
-if (!phoneNumber.startsWith('+')) {
-phoneNumber = `+${phoneNumber}`
-}} while (!await isValidPhoneNumber(phoneNumber))
-rl.close()
-addNumber = phoneNumber.replace(/\D/g, '')
-setTimeout(async () => {
-let codeBot = await conn.requestPairingCode(addNumber)
-codeBot = codeBot.match(/.{1,4}/g)?.join("-") || codeBot
-console.log(chalk.bold.white(chalk.bgYellow(`[ 👑 ] Código de Vinculación:`)), chalk.bold.yellow(codeBot))
-}, 3000)
-}}}}
-conn.isInit = false
-conn.well = false
-conn.logger.info(`[ 👑 ] L I S T O\n`)
-if (!opts['test']) {
-if (global.db) setInterval(async () => {
-if (global.db.data) await global.db.write()
-if (opts['autocleartmp'] && (global.support || {}).find) {
-const tmp = [os.tmpdir(), 'tmp', `${jadi}`]
-tmp.forEach((filename) => cp.spawn('find', [filename, '-amin', '3', '-type', 'f', '-delete']))
-}}, 30 * 1000)
+// --- PAIRING CODE LOGIC ---
+if (!fs.existsSync(`./${sessionPath}/creds.json`)) {
+    if (opcion === '2' || methodCode) {
+        if (!conn.authState.creds.registered) {
+            let addNumber = phoneNumber ? phoneNumber.replace(/[^0-9]/g, '') : ''
+            if (!addNumber) {
+                addNumber = await question(chalk.bgBlack(chalk.bold.yellowBright(`\n[ 👑 ] Ingrese el número del Imperio (ej: 503...):\n---> `)))
+                addNumber = addNumber.replace(/\D/g, '')
+            }
+            setTimeout(async () => {
+                let codeBot = await conn.requestPairingCode(addNumber)
+                codeBot = codeBot.match(/.{1,4}/g)?.join("-") || codeBot
+                console.log(chalk.bold.white(chalk.bgYellow(`\n[ 👑 ] Tu Código de Vinculación es:`)), chalk.bold.yellow(codeBot))
+            }, 3000)
+        }
+    }
 }
 
+// --- HANDLERS & EVENTS ---
 async function connectionUpdate(update) {
-const { connection, lastDisconnect, isNewLogin } = update
-global.stopped = connection
-if (isNewLogin) conn.isInit = true
-const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode
-if (code && code !== DisconnectReason.loggedOut && conn?.ws.socket == null) {
-await global.reloadHandler(true).catch(console.error)
-global.timestamp.connect = new Date()
+    const { connection, lastDisconnect } = update
+    if (connection === "open") {
+        console.log(chalk.yellow.bold(`\n[ 👑 ] IMPERIO CONECTADO: ${conn.user.name || 'Bot'}`))
+        await joinChannels(conn)
+    }
+    if (connection === "close") {
+        let reason = new Boom(lastDisconnect?.error)?.output?.statusCode
+        if (reason !== DisconnectReason.loggedOut) {
+            console.log(chalk.yellow("→ Reconectando al Imperio..."))
+            await global.reloadHandler(true)
+        }
+    }
 }
-if (global.db.data == null) loadDatabase()
-if (update.qr != 0 && update.qr != undefined || methodCodeQR) {
-if (opcion == '1' || methodCodeQR) {
-console.log(chalk.yellow.bold(`[ 👑 ] Escanea el código QR del Imperio`))
-}}
-if (connection === "open") {
-const userJid = jidNormalizedUser(conn.user.id)
-const userName = conn.user.name || conn.user.verifiedName || "Desconocido"
-await joinChannels(conn)
-console.log(chalk.yellow.bold(`[ 👑 ] Imperio conectado a: ${userName}`))
-}
-let reason = new Boom(lastDisconnect?.error)?.output?.statusCode
-if (connection === "close") {
-if ([401, 440, 428, 405].includes(reason)) {
-console.log(chalk.red(`→ (${code}) › Sesión cerrada.`))
-}
-console.log(chalk.yellow("→ Reconectando al Imperio..."))
-await global.reloadHandler(true).catch(console.error)
-}}
-process.on('uncaughtException', console.error)
-let isInit = true
-let handler = await import('./handler.js')
+
 global.reloadHandler = async function (restatConn) {
-try {
-const Handler = await import(`./handler.js?update=${Date.now()}`).catch(console.error)
-if (Object.keys(Handler || {}).length) handler = Handler
-} catch (e) {
-console.error(e)
-}
-if (restatConn) {
-const oldChats = global.conn.chats
-try {
-global.conn.ws.close()
-} catch { }
-conn.ev.removeAllListeners()
-global.conn = makeWASocket(connectionOptions, { chats: oldChats })
-isInit = true
-}
-if (!isInit) {
-conn.ev.off('messages.upsert', conn.handler)
-conn.ev.off('connection.update', conn.connectionUpdate)
-conn.ev.off('creds.update', conn.credsUpdate)
-}
-conn.handler = handler.handler.bind(global.conn)
-conn.connectionUpdate = connectionUpdate.bind(global.conn)
-conn.credsUpdate = saveCreds.bind(global.conn, true)
-const currentDateTime = new Date()
-const messageDateTime = new Date(conn.ev)
-if (currentDateTime >= messageDateTime) {
-const chats = Object.entries(conn.chats).filter(([jid, chat]) => !jid.endsWith('@g.us') && chat.isChats).map((v) => v[0])
-} else {
-const chats = Object.entries(conn.chats).filter(([jid, chat]) => !jid.endsWith('@g.us') && chat.isChats).map((v) => v[0])
-}
-conn.ev.on('messages.upsert', conn.handler)
-conn.ev.on('connection.update', conn.connectionUpdate)
-conn.ev.on('creds.update', conn.credsUpdate)
-isInit = false
-return true
-}
-process.on('unhandledRejection', (reason, promise) => {
-console.error("Rechazo detectado:", reason)
-})
+    let handler = await import(`./handler.js?update=${Date.now()}`)
+    if (restatConn) {
+        try { global.conn.ws.close() } catch { }
+        global.conn = makeWASocket(connectionOptions)
+    }
+    conn.handler = handler.handler.bind(global.conn)
+    conn.connectionUpdate = connectionUpdate.bind(global.conn)
+    conn.credsUpdate = saveCreds.bind(global.conn, true)
 
-global.rutaJadiBot = join(__dirname, `./${jadi}`)
-if (global.yukiJadibts) {
-if (!existsSync(global.rutaJadiBot)) {
-mkdirSync(global.rutaJadiBot, { recursive: true })
-console.log(chalk.bold.yellow(`👑 La carpeta Empire: ${jadi} se creó correctamente.`))
-} else {
-console.log(chalk.bold.yellow(`👑 La carpeta Empire: ${jadi} ya existe.`))
+    conn.ev.on('messages.upsert', conn.handler)
+    conn.ev.on('connection.update', conn.connectionUpdate)
+    conn.ev.on('creds.update', conn.credsUpdate)
+    return true
 }
-const readRutaJadiBot = readdirSync(rutaJadiBot)
-if (readRutaJadiBot.length > 0) {
-const creds = 'creds.json'
-for (const gjbts of readRutaJadiBot) {
-const botPath = join(rutaJadiBot, gjbts)
-if (existsSync(botPath) && statSync(botPath).isDirectory()) {
-const readBotPath = readdirSync(botPath)
-if (readBotPath.includes(creds)) {
-yukiJadiBot({ pathYukiJadiBot: botPath, m: null, conn, args: '', usedPrefix: '/', command: 'serbot' })
-}}}}}
 
-const pluginFolder = global.__dirname(join(__dirname, './plugins'))
+// --- INICIO DE PLUGINS Y MANTENIMIENTO ---
+const pluginFolder = join(__dirname, './plugins')
 const pluginFilter = (filename) => /\.js$/.test(filename)
 global.plugins = {}
+
 async function filesInit() {
-for (const filename of readdirSync(pluginFolder).filter(pluginFilter)) {
-try {
-const file = global.__filename(join(pluginFolder, filename))
-const module = await import(file)
-global.plugins[filename] = module.default || module
-} catch (e) {
-conn.logger.error(e)
-delete global.plugins[filename]
-}}}
-filesInit().then((_) => Object.keys(global.plugins)).catch(console.error)
-global.reload = async (_ev, filename) => {
-if (pluginFilter(filename)) {
-const dir = global.__filename(join(pluginFolder, filename), true)
-if (filename in global.plugins) {
-if (existsSync(dir)) conn.logger.info(` updated plugin - '${filename}'`)
-else {
-conn.logger.warn(`deleted plugin - '${filename}'`)
-return delete global.plugins[filename]
-}} else conn.logger.info(`new plugin - '${filename}'`)
-const err = syntaxerror(readFileSync(dir), filename, {
-sourceType: 'module',
-allowAwaitOutsideFunction: true,
-})
-if (err) conn.logger.error(`syntax error while loading '${filename}'\n${format(err)}`)
-else {
-try {
-const module = (await import(`${global.__filename(dir)}?update=${Date.now()}`))
-global.plugins[filename] = module.default || module
-} catch (e) {
-conn.logger.error(`error require plugin '${filename}\n${format(e)}'`)
-} finally {
-global.plugins = Object.fromEntries(Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b)))
-}}}}
-Object.freeze(global.reload)
-watch(pluginFolder, global.reload)
+    for (const filename of readdirSync(pluginFolder).filter(pluginFilter)) {
+        try {
+            const file = global.__filename(join(pluginFolder, filename))
+            const module = await import(file)
+            global.plugins[filename] = module.default || module
+        } catch (e) {
+            console.error(e)
+        }
+    }
+}
+
+filesInit().then(() => console.log(chalk.greenBright('👑 Plugins del Imperio listos.')))
+watch(pluginFolder, (ev, filename) => global.reload(ev, filename))
 await global.reloadHandler()
-async function _quickTest() {
-const test = await Promise.all([
-spawn('ffmpeg'),
-spawn('ffprobe'),
-spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-filter_complex', 'color', '-frames:v', '1', '-f', 'webp', '-']),
-spawn('convert'),
-spawn('magick'),
-spawn('gm'),
-spawn('find', ['--version']),
-].map((p) => {
-return Promise.race([
-new Promise((resolve) => {
-p.on('close', (code) => {
-resolve(code !== 127)
-})}),
-new Promise((resolve) => {
-p.on('error', (_) => resolve(false))
-})])
-}))
-const [ffmpeg, ffprobe, ffmpegWebp, convert, magick, gm, find] = test
-const s = global.support = { ffmpeg, ffprobe, ffmpegWebp, convert, magick, gm, find }
-Object.freeze(global.support)
-}
+
+// Limpieza de TMP cada 30 segundos
 setInterval(async () => {
-const tmpDir = join(__dirname, 'tmp')
-try {
-const filenames = readdirSync(tmpDir)
-filenames.forEach(file => {
-const filePath = join(tmpDir, file)
-unlinkSync(filePath)})
-console.log(chalk.gray(`→ Limpieza de TMP completada`))
-} catch {
-console.log(chalk.gray(`→ Error en limpieza de TMP`))
-}}, 30 * 1000) 
-_quickTest().catch(console.error)
-async function isValidPhoneNumber(number) {
-try {
-number = number.replace(/\s+/g, '')
-if (number.startsWith('+521')) {
-number = number.replace('+521', '+52')
-} else if (number.startsWith('+52') && number[4] === '1') {
-number = number.replace('+52 1', '+52')
-}
-const parsedNumber = phoneUtil.parseAndKeepRawInput(number)
-return phoneUtil.isValidNumber(parsedNumber)
-} catch (error) {
-return false
-}}
+    if (existsSync('./tmp')) {
+        const files = readdirSync('./tmp')
+        files.forEach(f => unlinkSync(join('./tmp', f)))
+    }
+}, 30000)
 
 async function joinChannels(sock) {
-for (const value of Object.values(global.ch || {})) {
-if (typeof value === 'string' && value.endsWith('@newsletter')) {
-await sock.newsletterFollow(value).catch(() => {})
-}}}
+    for (const value of Object.values(global.ch || {})) {
+        if (value.endsWith('@newsletter')) await sock.newsletterFollow(value).catch(() => {})
+    }
+}
