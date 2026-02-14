@@ -32,16 +32,16 @@ const { chain } = lodash
 const PORT = 3001
 
 let { say } = cfonts
-console.log(chalk.magentaBright('\n❀ Iniciando...'))
-say('NessMD', {
+console.log(chalk.yellowBright('\n👑 Iniciando el Imperio...'))
+say('EMPIRE-MD', {
 font: 'BLOCK',
 align: 'center',
-gradient: ['grey', 'white']
+gradient: ['yellow', 'orange']
 })
-say('basado en Alexis Ness de BlueLock', {
+say('By Judai - El Tio Judai', {
 font: 'console',
 align: 'center',
-colors: ['cyan', 'magenta', 'yellow']
+colors: ['yellow']
 })
 protoType()
 serialize()
@@ -88,7 +88,7 @@ global.db.chain = chain(global.db.data)
 }
 loadDatabase()
 
-const { state, saveState, saveCreds } = await useMultiFileAuthState(global.sessions)
+const { state, saveState, saveCreds } = await useMultiFileAuthState(global.sessions || 'session')
 const msgRetryCounterMap = new Map()
 const msgRetryCounterCache = new NodeCache({ stdTTL: 0, checkperiod: 0 })
 const userDevicesCache = new NodeCache({ stdTTL: 0, checkperiod: 0 })
@@ -97,33 +97,33 @@ let phoneNumber = global.botNumber
 const methodCodeQR = process.argv.includes("qr")
 const methodCode = !!phoneNumber || process.argv.includes("code")
 const MethodMobile = process.argv.includes("mobile")
-const colors = chalk.bold.white
-const qrOption = chalk.blueBright
-const textOption = chalk.cyan
+const colors = chalk.bold.yellow
+const qrOption = chalk.magentaBright
+const textOption = chalk.whiteBright
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 const question = (texto) => new Promise((resolver) => rl.question(texto, resolver))
 let opcion
 if (methodCodeQR) {
 opcion = '1'
 }
-if (!methodCodeQR && !methodCode && !fs.existsSync(`./${sessions}/creds.json`)) {
+if (!methodCodeQR && !methodCode && !fs.existsSync(`./${global.sessions || 'session'}/creds.json`)) {
 do {
-opcion = await question(colors("Seleccione una opción:\n") + qrOption("1. Con código QR\n") + textOption("2. Con código de texto de 8 dígitos\n--> "))
+opcion = await question(colors("Seleccione una opción de Empire:\n") + qrOption("1. Con código QR\n") + textOption("2. Con código de texto de 8 dígitos\n--> "))
 if (!/^[1-2]$/.test(opcion)) {
-console.log(chalk.bold.redBright(`No se permiten numeros que no sean 1 o 2, tampoco letras o símbolos especiales.`))
-}} while (opcion !== '1' && opcion !== '2' || fs.existsSync(`./${sessions}/creds.json`))
+console.log(chalk.bold.redBright(`Opción inválida. Seleccione 1 o 2.`))
+}} while (opcion !== '1' && opcion !== '2' || fs.existsSync(`./${global.sessions || 'session'}/creds.json`))
 }
 console.info = () => {}
 const connectionOptions = {
 logger: pino({ level: 'silent' }),
 printQRInTerminal: opcion == '1' ? true : methodCodeQR ? true : false,
 mobile: MethodMobile,
-browser: ["MacOs", "Safari"],
+browser: ["Empire-By-Judai", "Safari", "2.0.0"],
 auth: {
 creds: state.creds,
 keys: makeCacheableSignalKeyStore(state.keys, Pino({ level: "fatal" }).child({ level: "fatal" })),
 },
-markOnlineOnConnect: false,
+markOnlineOnConnect: true,
 generateHighQualityLinkPreview: true,
 syncFullHistory: false,
 getMessage: async (key) => {
@@ -145,7 +145,7 @@ maxIdleTimeMs: 60000,
 global.conn = makeWASocket(connectionOptions)
 conn.ev.on("creds.update", saveCreds)
 
-if (!fs.existsSync(`./${sessions}/creds.json`)) {
+if (!fs.existsSync(`./${global.sessions || 'session'}/creds.json`)) {
 if (opcion === '2' || methodCode) {
 opcion = '2'
 if (!conn.authState.creds.registered) {
@@ -154,7 +154,7 @@ if (!!phoneNumber) {
 addNumber = phoneNumber.replace(/[^0-9]/g, '')
 } else {
 do {
-phoneNumber = await question(chalk.bgBlack(chalk.bold.greenBright(`[ ✿ ]  Por favor, Ingrese el número de WhatsApp.\n${chalk.bold.magentaBright('---> ')}`)))
+phoneNumber = await question(chalk.bgBlack(chalk.bold.yellowBright(`[ 👑 ] Por favor, ingrese el número del Imperio.\n${chalk.bold.magentaBright('---> ')}`)))
 phoneNumber = phoneNumber.replace(/\D/g, '')
 if (!phoneNumber.startsWith('+')) {
 phoneNumber = `+${phoneNumber}`
@@ -164,12 +164,12 @@ addNumber = phoneNumber.replace(/\D/g, '')
 setTimeout(async () => {
 let codeBot = await conn.requestPairingCode(addNumber)
 codeBot = codeBot.match(/.{1,4}/g)?.join("-") || codeBot
-console.log(chalk.bold.white(chalk.bgMagenta(`[ ✿ ]  Código:`)), chalk.bold.white(chalk.white(codeBot)))
+console.log(chalk.bold.white(chalk.bgYellow(`[ 👑 ] Código de Vinculación:`)), chalk.bold.yellow(codeBot))
 }, 3000)
 }}}}
 conn.isInit = false
 conn.well = false
-conn.logger.info(`[ ✿ ]  H E C H O\n`)
+conn.logger.info(`[ 👑 ] L I S T O\n`)
 if (!opts['test']) {
 if (global.db) setInterval(async () => {
 if (global.db.data) await global.db.write()
@@ -191,20 +191,20 @@ global.timestamp.connect = new Date()
 if (global.db.data == null) loadDatabase()
 if (update.qr != 0 && update.qr != undefined || methodCodeQR) {
 if (opcion == '1' || methodCodeQR) {
-console.log(chalk.green.bold(`[ ✿ ]  Escanea este código QR`))
+console.log(chalk.yellow.bold(`[ 👑 ] Escanea el código QR del Imperio`))
 }}
 if (connection === "open") {
 const userJid = jidNormalizedUser(conn.user.id)
 const userName = conn.user.name || conn.user.verifiedName || "Desconocido"
 await joinChannels(conn)
-console.log(chalk.green.bold(`[ ✿ ]  Conectado a: ${userName}`))
+console.log(chalk.yellow.bold(`[ 👑 ] Imperio conectado a: ${userName}`))
 }
 let reason = new Boom(lastDisconnect?.error)?.output?.statusCode
 if (connection === "close") {
 if ([401, 440, 428, 405].includes(reason)) {
-console.log(chalk.red(`→ (${code}) › Cierra la session Principal.`))
+console.log(chalk.red(`→ (${code}) › Sesión cerrada.`))
 }
-console.log(chalk.yellow("→ Reconectando el Bot Principal..."))
+console.log(chalk.yellow("→ Reconectando al Imperio..."))
 await global.reloadHandler(true).catch(console.error)
 }}
 process.on('uncaughtException', console.error)
@@ -248,16 +248,16 @@ isInit = false
 return true
 }
 process.on('unhandledRejection', (reason, promise) => {
-console.error("Rechazo no manejado detectado:", reason)
+console.error("Rechazo detectado:", reason)
 })
 
 global.rutaJadiBot = join(__dirname, `./${jadi}`)
 if (global.yukiJadibts) {
 if (!existsSync(global.rutaJadiBot)) {
 mkdirSync(global.rutaJadiBot, { recursive: true })
-console.log(chalk.bold.cyan(`ꕥ La carpeta: ${jadi} se creó correctamente.`))
+console.log(chalk.bold.yellow(`👑 La carpeta Empire: ${jadi} se creó correctamente.`))
 } else {
-console.log(chalk.bold.cyan(`ꕥ La carpeta: ${jadi} ya está creada.`))
+console.log(chalk.bold.yellow(`👑 La carpeta Empire: ${jadi} ya existe.`))
 }
 const readRutaJadiBot = readdirSync(rutaJadiBot)
 if (readRutaJadiBot.length > 0) {
@@ -270,7 +270,7 @@ if (readBotPath.includes(creds)) {
 yukiJadiBot({ pathYukiJadiBot: botPath, m: null, conn, args: '', usedPrefix: '/', command: 'serbot' })
 }}}}}
 
-const pluginFolder = global.__dirname(join(__dirname, './plugins/index'))
+const pluginFolder = global.__dirname(join(__dirname, './plugins'))
 const pluginFilter = (filename) => /\.js$/.test(filename)
 global.plugins = {}
 async function filesInit() {
@@ -333,7 +333,6 @@ const [ffmpeg, ffprobe, ffmpegWebp, convert, magick, gm, find] = test
 const s = global.support = { ffmpeg, ffprobe, ffmpegWebp, convert, magick, gm, find }
 Object.freeze(global.support)
 }
-// Tmp
 setInterval(async () => {
 const tmpDir = join(__dirname, 'tmp')
 try {
@@ -341,9 +340,9 @@ const filenames = readdirSync(tmpDir)
 filenames.forEach(file => {
 const filePath = join(tmpDir, file)
 unlinkSync(filePath)})
-console.log(chalk.gray(`→ Archivos de la carpeta TMP eliminados`))
+console.log(chalk.gray(`→ Limpieza de TMP completada`))
 } catch {
-console.log(chalk.gray(`→ Los archivos de la carpeta TMP no se pudieron eliminar`))
+console.log(chalk.gray(`→ Error en limpieza de TMP`))
 }}, 30 * 1000) 
 _quickTest().catch(console.error)
 async function isValidPhoneNumber(number) {
@@ -361,7 +360,7 @@ return false
 }}
 
 async function joinChannels(sock) {
-for (const value of Object.values(global.ch)) {
+for (const value of Object.values(global.ch || {})) {
 if (typeof value === 'string' && value.endsWith('@newsletter')) {
 await sock.newsletterFollow(value).catch(() => {})
 }}}
