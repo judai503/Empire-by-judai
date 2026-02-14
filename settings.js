@@ -1,17 +1,19 @@
 import fs from 'fs'
+import chalk from 'chalk'
 
 global.owner = [['50360438371', 'Judai', true]]
 global.mods = []
 global.prems = []
 
+// Configuración de NessMD adaptada al Imperio
 global.botname = '👑 𝐄𝐌𝐏𝐈𝐑𝐄-𝐌𝐃 👑'
 global.wm = '𝐄𝐌𝐏𝐈𝐑𝐄-𝐌𝐃'
-global.sessions = 'session/Principal'
-global.jadi = 'session/SubBots'
+global.titulowm = '𝐄𝐌𝐏𝐈𝐑𝐄-𝐌𝐃 ⌇ 𝐉𝐔𝐃𝐀𝐈'
+
+// IMPORTANTE: Carpeta de sesión para Akirax
+global.sessions = 'session/Principal' 
 
 global.prefix = new RegExp('^[#!./-]')
 global.wait = '👑 *Cargando... El Imperio está procesando.*'
 
-// Redes
-global.ig = 'https://instagram.com/...'
-global.canal = 'https://whatsapp.com/channel/...'
+console.log(chalk.yellowBright("✅ Configuración del Imperio Lista"))
