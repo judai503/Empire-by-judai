@@ -1,19 +1,60 @@
-import fs from 'fs'
-import chalk from 'chalk'
+import { watchFile, unwatchFile } from "fs"
+import chalk from "chalk"
+import { fileURLToPath } from "url"
+import fs from "fs"
 
-global.owner = [['50360438371', 'Judai', true]]
-global.mods = []
+/* > Información de la cuenta owner < */
+global.userowner = "El tio Judai"
+global.passowner = "Judai"
+
+/* > Información del numero < */
+global.botNumber = "" 
+global.owner = ["50360438371"]
+global.suittag = [""] 
 global.prems = []
 
-// Configuración de NessMD adaptada al Imperio
-global.botname = '👑 𝐄𝐌𝐏𝐈𝐑𝐄-𝐌𝐃 👑'
-global.wm = '𝐄𝐌𝐏𝐈𝐑𝐄-𝐌𝐃'
-global.titulowm = '𝐄𝐌𝐏𝐈𝐑𝐄-𝐌𝐃 ⌇ 𝐉𝐔𝐃𝐀𝐈'
+/* > Información del sistema < */
+global.libreria = "@soymaycol/baileys"
+global.vs = "^1.8.2|Latest"
+global.sessions = "EMPIRE/Principal"
+global.jadi = "EMPIRE/SubBots"
+global.yukiJadibts = true
 
-// IMPORTANTE: Carpeta de sesión para Akirax
-global.sessions = 'session/Principal' 
+/* > Personalizacion del Bot < */
+global.botname = 'Empire'
+global.textbot = 'Empire'
+global.dev = 'Judai'
+global.author = 'Judai'
+global.etiqueta = 'judai'
+global.currency = 'Empire-coins'
+global.banner = "LLENAR"
+global.icono = "LLENAR"
+global.catalogo = fs.readFileSync('./lib/JUDAI.JPG')
 
-global.prefix = new RegExp('^[#!./-]')
-global.wait = '👑 *Cargando... El Imperio está procesando.*'
+/* > Información del Creador < */
+global.group = "LLENAR"
+global.community = "LLENAR"
+global.channel = "LLENAR"
+global.github = ""
+global.gmail = ""
+global.ch = {
+ch1: ""
+}
 
-console.log(chalk.yellowBright("✅ Configuración del Imperio Lista"))
+/* > Lista de API's para usar < */
+global.APIs = {
+xyro: { url: "https://api.xyro.site", key: null },
+yupra: { url: "https://api.yupra.my.id", key: null },
+vreden: { url: "https://api.vreden.web.id", key: null },
+delirius: { url: "https://api.delirius.store", key: null },
+zenzxz: { url: "https://api.zenzxz.my.id", key: null },
+siputzx: { url: "https://api.siputzx.my.id", key: null },
+adonix: { url: "https://api-adonix.ultraplus.click", key: 'Adofreekey' }
+}
+
+let file = fileURLToPath(import.meta.url)
+watchFile(file, () => {
+unwatchFile(file)
+console.log(chalk.redBright("Update 'settings.js'"))
+import(`${file}?update=${Date.now()}`)
+})
