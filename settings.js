@@ -1,5 +1,7 @@
 export const config = {
     sessions: 'EmpireSession',
-    prefix: /^[#!./-]/,
-    botName: 'Empire Bot'
+    // Esta regex permite detectar el símbolo al inicio
+    prefix: /^[#!./-]/, 
+    botName: 'Empire Bot',
+    owner: '50360438371'
 };
