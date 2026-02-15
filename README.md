@@ -1,6 +1,6 @@
 # 👑 𝗘𝗠𝗣𝗜𝗥𝗘 𝗕𝗢𝗧
 
-![El tío Judai](src/El tío Judai.png)
+![El tío Judai](src/El%20tío%20Judai.png)
 
 ✨ **¡100% BASE ORIGINAL!** ✨  
 
