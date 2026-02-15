@@ -7,7 +7,10 @@ import { config } from './settings.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const plugins = {}; 
 
-// Función para cargar plugins una sola vez
+/**
+ * Carga todos los archivos de la carpeta /plugins a la memoria.
+ * Se ejecuta una sola vez al iniciar el index.js
+ */
 export async function loadPlugins() {
     const pluginFolder = path.join(__dirname, 'plugins');
     if (!fs.existsSync(pluginFolder)) fs.mkdirSync(pluginFolder);
@@ -15,55 +18,83 @@ export async function loadPlugins() {
     const files = fs.readdirSync(pluginFolder).filter(f => f.endsWith('.js'));
     for (const file of files) {
         try {
+            // Usamos un timestamp para forzar la lectura fresca si fuera necesario
             const module = await import(`./plugins/${file}?update=${Date.now()}`);
             plugins[file] = module.default || module;
         } catch (e) {
-            console.error(chalk.red(`Error cargando ${file}:`), e);
+            console.error(chalk.red(`[ERROR] No se pudo cargar el plugin ${file}:`), e);
         }
     }
-    console.log(chalk.green(`[SISTEMA] ${Object.keys(plugins).length} Plugins cargados.`));
+    console.log(chalk.green(`[SISTEMA] ${Object.keys(plugins).length} Plugins cargados correctamente.`));
 }
 
+/**
+ * Procesa cada mensaje que llega al bot
+ */
 export async function handler(conn, m) {
     try {
+        if (!m.message) return;
+        
+        // 1. Extraer el texto del mensaje (soporta texto, imágenes y mensajes editados)
         const messageType = Object.keys(m.message)[0];
-        const body = (messageType === 'conversation') ? m.message.conversation : 
-                     (messageType === 'extendedTextMessage') ? m.message.extendedTextMessage.text : 
-                     (messageType === 'imageMessage') ? m.message.imageMessage.caption : '';
+        let body = (messageType === 'conversation') ? m.message.conversation : 
+                   (messageType === 'extendedTextMessage') ? m.message.extendedTextMessage.text : 
+                   (messageType === 'imageMessage') ? m.message.imageMessage.caption : '';
 
-        if (!config.prefix.test(body)) return;
+        body = body.trim();
 
-        const args = body.trim().split(/ +/).slice(1);
-        const text = args.join(' ');
-        const command = body.trim().split(/ +/)[0].toLowerCase().replace(config.prefix, '');
+        // 2. Verificar si el mensaje es un comando
+        const isCmd = config.prefix.test(body);
+        if (!isCmd) return;
 
-        // Formateo de objeto m para facilidad de uso en plugins
+        // 3. Limpiar el comando y separar prefijo de contenido
+        // Esto permite que "!   tagall" funcione igual que "!tagall"
+        const usedPrefix = body.match(config.prefix)[0];
+        const textAfterPrefix = body.slice(usedPrefix.length).trim();
+        
+        const args = textAfterPrefix.split(/ +/);
+        const command = args.shift().toLowerCase(); // El comando es la primera palabra
+        const fullText = args.join(' '); // El resto es el texto o argumentos
+
+        // 4. Propiedades útiles para el objeto 'm'
         m.chat = m.key.remoteJid;
         m.isGroup = m.chat.endsWith('@g.us');
         m.sender = m.key.participant || m.key.remoteJid;
+        
+        // Función rápida para responder
         m.reply = (txt) => conn.sendMessage(m.chat, { text: txt }, { quoted: m });
 
-        // Buscamos el plugin en el objeto "plugins" en memoria
+        // 5. Buscador de comando en la caché de plugins
+        let executed = false;
         for (const name in plugins) {
             const plugin = plugins[name];
             if (!plugin) continue;
 
             const cmdProp = plugin.command;
+            
+            // Verificamos si el comando coincide (String, Array o Regex)
             const isMatch = Array.isArray(cmdProp) ? cmdProp.includes(command) : 
                           (cmdProp instanceof RegExp ? cmdProp.test(command) : cmdProp === command);
 
             if (isMatch) {
-                // Validación de permisos simple
+                // Validación de Dueño (si el plugin tiene rowner: true)
                 if (plugin.rowner && m.sender !== config.owner) {
-                    return m.reply('❌ Este comando es solo para mi creador.');
+                    return m.reply('❌ Este comando es exclusivo de mi creador.');
                 }
 
-                await plugin.run(conn, m, { args, text, command });
-                console.log(chalk.bgGreen.black(`[EXEC]`) + ` ${command} | ${m.sender}`);
+                // Ejecución del plugin
+                await plugin.run(conn, m, { args, text: fullText, command });
+                console.log(chalk.bgGreen.black(`[EXEC]`) + ` ${command} | De: ${m.sender.split('@')[0]}`);
+                executed = true;
                 break; 
             }
         }
+
+        if (!executed && config.testMode) {
+            console.log(chalk.yellow(`[WARN] Comando "${command}" no encontrado.`));
+        }
+
     } catch (e) {
-        console.error(chalk.red('Error en Handler:'), e);
+        console.error(chalk.red('[ERROR HANDLER]:'), e);
     }
 }
