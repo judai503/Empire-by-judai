@@ -1,85 +1,126 @@
-import { config } from './settings.js';
+import { config } from './settings.js'; // Corregido: 'import' en minúscula
 import { marca } from './lib/marca.js'; 
 import { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, DisconnectReason, Browsers } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import chalk from 'chalk';
 import fs from 'fs';
 import { handler, loadPlugins } from './handler.js';
+import readline from 'readline';
 
-let welcomeBuffer = {};
+const welcomeBuffer = new Map();
+const DB_PATH = './database/bienvenidas.json';
+
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const question = (text) => new Promise((resolve) => rl.question(text, resolve));
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState(config.sessions);
     const { version } = await fetchLatestBaileysVersion();
+    
+    console.log(chalk.blue(`[SISTEMA] Iniciando Empire Bot...`));
     await loadPlugins();
 
     const conn = makeWASocket({
         logger: pino({ level: 'silent' }),
-        browser: Browsers.ubuntu("Chrome"),
+        browser: Browsers.ubuntu("Chrome"), 
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }))
         },
-        version
+        version,
+        generateHighQualityLinkPreview: true,
+        printQRInTerminal: false 
     });
+
+    // --- VINCULACIÓN POR CÓDIGO ---
+    if (!conn.authState.creds.registered) {
+        console.log(chalk.yellow(`\n[!] NO SE DETECTÓ SESIÓN ACTIVA`));
+        let phoneNumber = await question(chalk.cyan('➤ Escribe el número (ej: 50370000000): '));
+        phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+
+        if (!phoneNumber) {
+            console.log(chalk.red('❌ Número inválido.'));
+            process.exit(0);
+        }
+
+        setTimeout(async () => {
+            try {
+                let code = await conn.requestPairingCode(phoneNumber);
+                code = code?.match(/.{1,4}/g)?.join('-') || code;
+                console.log(chalk.black(chalk.bgGreen(`\n TU CÓDIGO DE VINCULACIÓN `)));
+                console.log(chalk.white(chalk.bgBlack(` >  ${code}  < \n`)));
+            } catch (err) {
+                console.error(chalk.red('Error al solicitar código:'), err);
+            }
+        }, 3000);
+    }
 
     conn.ev.on('creds.update', saveCreds);
 
-    // --- LÓGICA DE EVENTOS DE GRUPO ---
-    conn.ev.on('group-participants.update', async (anu) => {
+    // --- EVENTOS DE GRUPO (BIENVENIDAS) ---
+    conn.ev.on('group-participants.update', async ({ id, participants, action }) => {
         try {
-            const { id, participants, action } = anu;
-            const metadata = await conn.groupMetadata(id);
-            const dbPath = './database/bienvenidas.json';
+            if (!fs.existsSync('./database')) fs.mkdirSync('./database');
+            let db = fs.existsSync(DB_PATH) ? JSON.parse(fs.readFileSync(DB_PATH, 'utf-8')) : {};
+            const data = db[id] || { enabled: true };
+            if (!data.enabled) return;
+
+            const metadata = await conn.groupMetadata(id).catch(() => ({}));
             
-            let db = {};
-            if (fs.existsSync(dbPath)) db = JSON.parse(fs.readFileSync(dbPath, 'utf-8'));
-            let data = db[id] || { enabled: true };
-
-            if (data.enabled === false) return;
-
             if (action === 'add') {
-                if (!welcomeBuffer[id]) welcomeBuffer[id] = [];
-                participants.forEach(p => {
-                    let jid = typeof p === 'string' ? p : p.id;
-                    if (jid) welcomeBuffer[id].push(jid);
-                });
+                if (!welcomeBuffer.has(id)) welcomeBuffer.set(id, { users: [], timer: null });
+                const groupData = welcomeBuffer.get(id);
+                participants.forEach(p => groupData.users.push(p));
 
-                if (welcomeBuffer[id].timer) clearTimeout(welcomeBuffer[id].timer);
-
-                welcomeBuffer[id].timer = setTimeout(async () => {
-                    const users = [...new Set(welcomeBuffer[id])];
-                    welcomeBuffer[id] = [];
-                    const tags = users.map(u => `@${u.split('@')[0]}`).join(' ');
+                if (groupData.timer) clearTimeout(groupData.timer);
+                
+                groupData.timer = setTimeout(async () => {
+                    const users = [...new Set(groupData.users)];
+                    welcomeBuffer.delete(id);
+                    const tags = users.map(u => `@${u.split('@')[0]}`).join(', ');
+                    const txt = data.customText || `✨ *¡BIENVENIDOS AL GRUPO!* ✨\n\n${metadata.desc || ''}`;
+                    const finalMsg = txt.includes('@user') ? txt.replace(/@user/g, tags) : `${tags}\n\n${txt}`;
                     
-                    let txt = data.customText || `✨ ¡BIENVENIDOS! ✨\n\n${metadata.desc || ''}`;
-                    // Mención inteligente
-                    let finalMsg = txt.includes('@user') ? txt.replace('@user', tags) : `${tags}\n\n${txt}`;
-                    
-                    await conn.sendMessage(id, { text: `${finalMsg}\n\n${marca}`, mentions: users });
-                }, 5000);
+                    await conn.sendMessage(id, { 
+                        text: `${finalMsg}\n\n${marca}`, 
+                        mentions: users 
+                    });
+                }, 8000);
 
             } else if (action === 'remove') {
-                for (let num of participants) {
-                    let jid = typeof num === 'string' ? num : num.id;
-                    let txt = data.customBye || `👋 @user salió del grupo.`;
-                    let finalMsg = txt.includes('@user') ? txt.replace('@user', `@${jid.split('@')[0]}`) : `@${jid.split('@')[0]}\n\n${txt}`;
-                    
-                    await conn.sendMessage(id, { text: `${finalMsg}\n\n${marca}`, mentions: [jid] });
+                for (let jid of participants) {
+                    const txt = data.customBye || `👋 @user salió del grupo.`;
+                    const finalMsg = txt.replace(/@user/g, `@${jid.split('@')[0]}`);
+                    await conn.sendMessage(id, { 
+                        text: `${finalMsg}\n\n${marca}`, 
+                        mentions: [jid] 
+                    });
                 }
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error(chalk.red('[ERROR EVENTO GRUPO]'), e); 
+        }
     });
 
-    conn.ev.on('messages.upsert', async ({ messages }) => {
+    // --- HANDLER DE MENSAJES ---
+    conn.ev.on('messages.upsert', async ({ messages, type }) => {
+        if (type !== 'notify') return;
         const m = messages[0];
         if (!m.message || m.key.fromMe) return;
         await handler(conn, m);
     });
 
-    conn.ev.on('connection.update', (up) => {
-        if (up.connection === 'open') console.log(chalk.green.bold("✅ EMPIRE BOT ONLINE"));
-        if (up.connection === 'close') startBot();
+    // --- CONEXIÓN ---
+    conn.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update;
+        if (connection === 'open') {
+            console.log(chalk.green.bold("\n🚀 EMPIRE BOT ONLINE"));
+        }
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) startBot();
+        }
     });
 }
+
 startBot();
