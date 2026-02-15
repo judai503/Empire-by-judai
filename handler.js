@@ -1,100 +1,124 @@
-import fs from 'fs';
+import fs from 'fs'; 
 import path from 'path';
 import { fileURLToPath } from 'url';
 import chalk from 'chalk';
-import { config } from './settings.js';
+import { config, isOwner } from './settings.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const plugins = {}; 
 
 /**
- * Carga todos los archivos de la carpeta /plugins a la memoria.
- * Se ejecuta una sola vez al iniciar el index.js
+ * Carga de Plugins con Auto-Reload
  */
 export async function loadPlugins() {
     const pluginFolder = path.join(__dirname, 'plugins');
-    if (!fs.existsSync(pluginFolder)) fs.mkdirSync(pluginFolder);
+    if (!fs.existsSync(pluginFolder)) fs.mkdirSync(pluginFolder, { recursive: true });
     
     const files = fs.readdirSync(pluginFolder).filter(f => f.endsWith('.js'));
+    
+    for (let key in plugins) delete plugins[key];
+
     for (const file of files) {
         try {
-            // Usamos un timestamp para forzar la lectura fresca si fuera necesario
-            const module = await import(`./plugins/${file}?update=${Date.now()}`);
+            const pluginPath = `./plugins/${file}?update=${Date.now()}`;
+            const module = await import(pluginPath);
             plugins[file] = module.default || module;
         } catch (e) {
-            console.error(chalk.red(`[ERROR] No se pudo cargar el plugin ${file}:`), e);
+            console.error(chalk.red(`[ERROR PLUGIN: ${file}]`), e);
         }
     }
-    console.log(chalk.green(`[SISTEMA] ${Object.keys(plugins).length} Plugins cargados correctamente.`));
+    console.log(chalk.cyan(`━━━ [SISTEMA: ${Object.keys(plugins).length} PLUGINS] ━━━`));
 }
 
 /**
- * Procesa cada mensaje que llega al bot
+ * Handler Maestro
  */
 export async function handler(conn, m) {
     try {
-        if (!m.message) return;
+        if (!m || !m.message) return;
+
+        const type = Object.keys(m.message)[0];
+        const msg = m.message[type];
         
-        // 1. Extraer el texto del mensaje (soporta texto, imágenes y mensajes editados)
-        const messageType = Object.keys(m.message)[0];
-        let body = (messageType === 'conversation') ? m.message.conversation : 
-                   (messageType === 'extendedTextMessage') ? m.message.extendedTextMessage.text : 
-                   (messageType === 'imageMessage') ? m.message.imageMessage.caption : '';
+        let body = (type === 'conversation') ? m.message.conversation :
+                   (type === 'extendedTextMessage') ? m.message.extendedTextMessage.text :
+                   (type === 'imageMessage' || type === 'videoMessage') ? msg.caption :
+                   (type === 'buttonsResponseMessage') ? msg.selectedButtonId :
+                   (type === 'listResponseMessage') ? msg.singleSelectReply.selectedRowId :
+                   (type === 'templateButtonReplyMessage') ? msg.selectedId :
+                   (m.quoted?.text) ? m.quoted.text : '';
 
-        body = body.trim();
+        if (!body) return;
 
-        // 2. Verificar si el mensaje es un comando
-        const isCmd = config.prefix.test(body);
-        if (!isCmd) return;
-
-        // 3. Limpiar el comando y separar prefijo de contenido
-        // Esto permite que "!   tagall" funcione igual que "!tagall"
-        const usedPrefix = body.match(config.prefix)[0];
-        const textAfterPrefix = body.slice(usedPrefix.length).trim();
-        
-        const args = textAfterPrefix.split(/ +/);
-        const command = args.shift().toLowerCase(); // El comando es la primera palabra
-        const fullText = args.join(' '); // El resto es el texto o argumentos
-
-        // 4. Propiedades útiles para el objeto 'm'
+        // --- IDENTIFICACIÓN DEL BOT ---
         m.chat = m.key.remoteJid;
         m.isGroup = m.chat.endsWith('@g.us');
         m.sender = m.key.participant || m.key.remoteJid;
         
-        // Función rápida para responder
-        m.reply = (txt) => conn.sendMessage(m.chat, { text: txt }, { quoted: m });
+        // Obtenemos el ID real del bot logueado
+        const botJid = conn.user.id.split(':')[0] + '@s.whatsapp.net';
+        
+        // El bot siempre es dueño de sus acciones
+        m.isOwner = isOwner(m.sender) || m.sender === botJid;
+        
+        m.reply = (txt) => conn.sendMessage(m.chat, { 
+            text: txt, 
+            mentions: [m.sender]
+        }, { quoted: m });
 
-        // 5. Buscador de comando en la caché de plugins
-        let executed = false;
+        // --- AUTO-DETECCIÓN DE RANGOS ---
+        if (m.isGroup) {
+            const groupMetadata = await conn.groupMetadata(m.chat).catch(() => ({}));
+            const participants = groupMetadata.participants || [];
+            const admins = participants.filter(p => p.admin).map(p => p.id);
+            
+            // EL BOT SIEMPRE ES ADMIN PARA SÍ MISMO (Bypass)
+            m.isAdmin = admins.includes(m.sender) || m.sender === botJid || m.isOwner;
+            m.botIsAdmin = admins.includes(botJid);
+            m.groupMetadata = groupMetadata;
+        }
+
+        // --- PROCESAMIENTO DE COMANDOS ---
+        const prefixMatch = body.trim().match(config.prefix);
+        if (!prefixMatch) return;
+
+        const usedPrefix = prefixMatch[0];
+        const textAfterPrefix = body.replace(usedPrefix, '').trim();
+        const args = textAfterPrefix.split(/ +/).filter(v => v);
+        const command = args.shift()?.toLowerCase();
+        const fullText = args.join(' ');
+
         for (const name in plugins) {
             const plugin = plugins[name];
-            if (!plugin) continue;
+            if (!plugin || !plugin.command) continue;
 
-            const cmdProp = plugin.command;
-            
-            // Verificamos si el comando coincide (String, Array o Regex)
-            const isMatch = Array.isArray(cmdProp) ? cmdProp.includes(command) : 
-                          (cmdProp instanceof RegExp ? cmdProp.test(command) : cmdProp === command);
+            const isMatch = Array.isArray(plugin.command) 
+                ? plugin.command.includes(command) 
+                : (plugin.command instanceof RegExp ? plugin.command.test(command) : plugin.command === command);
 
             if (isMatch) {
-                // Validación de Dueño (si el plugin tiene rowner: true)
-                if (plugin.rowner && m.sender !== config.owner) {
-                    return m.reply('❌ Este comando es exclusivo de mi creador.');
-                }
+                // Si es el BOT, se saltan las restricciones de admin
+                if (plugin.admin && !m.isAdmin) return m.reply(config.msgs.admin);
+                if (plugin.rowner && !m.isOwner) return m.reply(config.msgs.owner);
+                if (plugin.group && !m.isGroup) return m.reply(config.msgs.group);
 
-                // Ejecución del plugin
-                await plugin.run(conn, m, { args, text: fullText, command });
-                console.log(chalk.bgGreen.black(`[EXEC]`) + ` ${command} | De: ${m.sender.split('@')[0]}`);
-                executed = true;
+                try {
+                    await plugin.run(conn, m, { 
+                        args, 
+                        text: fullText, 
+                        command, 
+                        usedPrefix,
+                        groupMetadata: m.groupMetadata
+                    });
+                    console.log(chalk.green(`[OK] ${command} | ${m.sender.split('@')[0]}`));
+                } catch (err) {
+                    console.error(chalk.red(`[FALLO EN PLUGIN: ${name}]`), err);
+                    m.reply(config.msgs.error);
+                }
                 break; 
             }
         }
-
-        if (!executed && config.testMode) {
-            console.log(chalk.yellow(`[WARN] Comando "${command}" no encontrado.`));
-        }
-
     } catch (e) {
-        console.error(chalk.red('[ERROR HANDLER]:'), e);
+        console.error(chalk.red('[ERROR CRÍTICO HANDLER]:'), e);
     }
 }
