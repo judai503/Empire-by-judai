@@ -1,33 +1,35 @@
-# 👑 EMPIRE BOT
+# 👑 𝗘𝗠𝗣𝗜𝗥𝗘 𝗕𝗢𝗧
 
-███████╗███╗   ███╗██████╗ ██╗██████╗ ███████╗
-██╔════╝████╗ ████║██╔══██╗██║██╔══██╗██╔════╝
-█████╗  ██╔████╔██║██████╔╝██║██████╔╝█████╗  
-██╔══╝  ██║╚██╔╝██║██╔═══╝ ██║██╔══██╗██╔══╝  
-███████╗██║ ╚═╝ ██║██║     ██║██║  ██║███████╗
-╚══════╝╚═╝     ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝
+![El tío Judai](src/El%20tío%20Judai.png)
 
-✨ **Empire BOT — Bot de WhatsApp para clanes y sociedades de likes** ✨
+✨ **¡100% BASE ORIGINAL!** ✨  
 
-## 📌 Sobre
-**Empire BOT** es un bot de WhatsApp multifuncional hecho con Baileys diseñado especialmente para **clanes de Free Fire** y **sociedades de likes**. Permite administrar, automatizar y entretener tu comunidad con juegos, herramientas de gestión, sistema RPG/economía, funciones de IA y mucho más.
+---
 
-Este proyecto usa la librería Baileys para conectar a WhatsApp a través de Multi-Device sin el uso de un navegador. 2
+## 📌 𝗦𝗼𝗯𝗿𝗲
+**Empire BOT** es un **bot de WhatsApp multifuncional** diseñado especialmente para:  
+- 🎮 **Clanes de Free Fire**  
+- ❤️ **Sociedades de Likes**  
+- 🛡️ **Administración general de grupos**  
 
-## 🎯 Características principales
-- 👥 Administración avanzada de grupos  
-- 👋 Mensajes de bienvenida y despedida automáticos  
-- 🛡️ Herramientas de moderación (antilink, antiflood, etc.)  
-- 🎮 Juegos básicos y nuevos  
-- 💰 Sistema RPG / Economía (Gacha, monedas, niveles, etc.)  
-- 🤖 Integración con Inteligencia Artificial  
-- ⬇️ Descargas multimedia (audio, video, stickers)  
-- 🤝 Sub-Bots (JadiBot)  
-- ⚙️ Plugins extensibles  
+Permite **automatizar tareas**, **gestionar comunidades**, **entretener con juegos y herramientas**, y mantener tu grupo **organizado y divertido**.
 
-## 🚀 Instalación
-Clona este repositorio y sigue los pasos:
+---
 
+## 🎯 𝗖𝗮𝗿𝗮𝗰𝘁𝗲𝗿𝗶́𝘀𝘁𝗶𝗰𝗮𝘀 𝗽𝗿𝗶𝗻𝗰𝗶𝗽𝗮𝗹𝗲𝘀
+- 👥 **Administración avanzada de grupos**  
+- 👋 **Bienvenida y despedida automática**  
+- 🛡️ **Moderación:** antilink, antiflood, y más  
+- 🎮 **Juegos básicos y nuevos**  
+- 💰 **Sistema RPG / Economía:** Gacha, monedas, niveles, etc.  
+- 🤖 **Funciones de IA** para asistencia y entretenimiento  
+- ⬇️ **Descargas multimedia:** audio, video, stickers  
+- 🤝 **Sub-Bots (JadiBot)**  
+- ⚙️ **Plugins extensibles**  
+
+---
+
+## 🚀 𝗜𝗻𝘀𝘁𝗮𝗹𝗮𝗰𝗶𝗼́𝗻
 ```bash
 git clone https://github.com/judai503/Empire-by-judai.git
 cd Empire-by-judai
