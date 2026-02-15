@@ -1,0 +1,16 @@
+{
+  "name": "empire-bot-ultra",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "@hapi/boom": "latest",
+    "pino": "latest",
+    "chalk": "^5.3.0",
+    "readline": "latest"
+  }
+}
