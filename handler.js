@@ -11,114 +11,150 @@ export const plugins = {};
  * Carga de Plugins con Auto-Reload
  */
 export async function loadPlugins() {
-    const pluginFolder = path.join(__dirname, 'plugins');
-    if (!fs.existsSync(pluginFolder)) fs.mkdirSync(pluginFolder, { recursive: true });
-    
-    const files = fs.readdirSync(pluginFolder).filter(f => f.endsWith('.js'));
-    
-    for (let key in plugins) delete plugins[key];
+  const pluginFolder = path.join(__dirname, 'plugins');
+  if (!fs.existsSync(pluginFolder)) fs.mkdirSync(pluginFolder, { recursive: true });
 
-    for (const file of files) {
-        try {
-            const pluginPath = `./plugins/${file}?update=${Date.now()}`;
-            const module = await import(pluginPath);
-            plugins[file] = module.default || module;
-        } catch (e) {
-            console.error(chalk.red(`[ERROR PLUGIN: ${file}]`), e);
-        }
+  const files = fs.readdirSync(pluginFolder).filter(f => f.endsWith('.js'));
+
+  for (let key in plugins) delete plugins[key];
+
+  for (const file of files) {
+    try {
+      const pluginPath = `./plugins/${file}?update=${Date.now()}`;
+      const module = await import(pluginPath);
+      const plugin = module.default || module;
+
+      if (!plugin?.command || !plugin?.run) {
+        console.log(chalk.yellow(`[PLUGIN INVÁLIDO] ${file}`));
+        continue;
+      }
+
+      plugins[file] = plugin;
+    } catch (e) {
+      console.error(chalk.red(`[ERROR PLUGIN: ${file}]`), e);
     }
-    console.log(chalk.cyan(`━━━ [SISTEMA: ${Object.keys(plugins).length} PLUGINS] ━━━`));
+  }
+
+  console.log(chalk.cyan(`━━━ [SISTEMA: ${Object.keys(plugins).length} PLUGINS] ━━━`));
+}
+
+/**
+ * Cache de grupos (anti rate-limit)
+ */
+const groupCache = new Map();
+
+async function getGroupMetadata(conn, jid) {
+  if (groupCache.has(jid)) return groupCache.get(jid);
+  const data = await conn.groupMetadata(jid).catch(() => ({}));
+  groupCache.set(jid, data);
+  setTimeout(() => groupCache.delete(jid), 60_000);
+  return data;
+}
+
+/**
+ * Extrae número real del jid (sirve para @lid y @s.whatsapp.net)
+ */
+function jidToNum(jid) {
+  if (!jid) return null;
+  return jid.toString().replace(/\D/g, '');
 }
 
 /**
  * Handler Maestro
  */
 export async function handler(conn, m) {
-    try {
-        if (!m || !m.message) return;
+  try {
+    if (!m || !m.message) return;
 
-        const type = Object.keys(m.message)[0];
-        const msg = m.message[type];
-        
-        let body = (type === 'conversation') ? m.message.conversation :
-                   (type === 'extendedTextMessage') ? m.message.extendedTextMessage.text :
-                   (type === 'imageMessage' || type === 'videoMessage') ? msg.caption :
-                   (type === 'buttonsResponseMessage') ? msg.selectedButtonId :
-                   (type === 'listResponseMessage') ? msg.singleSelectReply.selectedRowId :
-                   (type === 'templateButtonReplyMessage') ? msg.selectedId :
-                   (m.quoted?.text) ? m.quoted.text : '';
+    const type = Object.keys(m.message)[0];
+    const msg = m.message[type];
 
-        if (!body) return;
+    let body = (type === 'conversation') ? msg :
+               (type === 'extendedTextMessage') ? msg.text :
+               (type === 'imageMessage' || type === 'videoMessage') ? msg.caption :
+               (type === 'buttonsResponseMessage') ? msg.selectedButtonId :
+               (type === 'listResponseMessage') ? msg.singleSelectReply.selectedRowId :
+               (type === 'templateButtonReplyMessage') ? msg.selectedId :
+               '';
 
-        // --- IDENTIFICACIÓN DEL BOT ---
-        m.chat = m.key.remoteJid;
-        m.isGroup = m.chat.endsWith('@g.us');
-        m.sender = m.key.participant || m.key.remoteJid;
-        
-        // Obtenemos el ID real del bot logueado
-        const botJid = conn.user.id.split(':')[0] + '@s.whatsapp.net';
-        
-        // El bot siempre es dueño de sus acciones
-        m.isOwner = isOwner(m.sender) || m.sender === botJid;
-        
-        m.reply = (txt) => conn.sendMessage(m.chat, { 
-            text: txt, 
-            mentions: [m.sender]
-        }, { quoted: m });
+    if (!body) return;
 
-        // --- AUTO-DETECCIÓN DE RANGOS ---
-        if (m.isGroup) {
-            const groupMetadata = await conn.groupMetadata(m.chat).catch(() => ({}));
-            const participants = groupMetadata.participants || [];
-            const admins = participants.filter(p => p.admin).map(p => p.id);
-            
-            // EL BOT SIEMPRE ES ADMIN PARA SÍ MISMO (Bypass)
-            m.isAdmin = admins.includes(m.sender) || m.sender === botJid || m.isOwner;
-            m.botIsAdmin = admins.includes(botJid);
-            m.groupMetadata = groupMetadata;
-        }
+    m.chat = m.key.remoteJid;
+    m.isGroup = m.chat.endsWith('@g.us');
+    m.sender = m.key.participant || m.key.remoteJid;
 
-        // --- PROCESAMIENTO DE COMANDOS ---
-        const prefixMatch = body.trim().match(config.prefix);
-        if (!prefixMatch) return;
+    // Menciones
+    m.mentionedJid =
+      (m.message?.extendedTextMessage?.contextInfo?.mentionedJid || []);
 
-        const usedPrefix = prefixMatch[0];
-        const textAfterPrefix = body.replace(usedPrefix, '').trim();
-        const args = textAfterPrefix.split(/ +/).filter(v => v);
-        const command = args.shift()?.toLowerCase();
-        const fullText = args.join(' ');
+    // Bot ID real
+    const botRaw = conn?.user?.id;
+    const botJid = typeof botRaw === 'string'
+      ? (botRaw.includes(':') ? botRaw.split(':')[0] + '@s.whatsapp.net' : botRaw)
+      : botRaw;
 
-        for (const name in plugins) {
-            const plugin = plugins[name];
-            if (!plugin || !plugin.command) continue;
+    const senderNum = jidToNum(m.sender);
+    const botNum = jidToNum(botJid);
 
-            const isMatch = Array.isArray(plugin.command) 
-                ? plugin.command.includes(command) 
-                : (plugin.command instanceof RegExp ? plugin.command.test(command) : plugin.command === command);
+    m.isOwner = isOwner(m.sender) || senderNum === botNum;
 
-            if (isMatch) {
-                // Si es el BOT, se saltan las restricciones de admin
-                if (plugin.admin && !m.isAdmin) return m.reply(config.msgs.admin);
-                if (plugin.rowner && !m.isOwner) return m.reply(config.msgs.owner);
-                if (plugin.group && !m.isGroup) return m.reply(config.msgs.group);
+    m.reply = (txt, opts = {}) => conn.sendMessage(
+      m.chat,
+      { text: txt, mentions: opts.mentions || [] },
+      { quoted: m }
+    );
 
-                try {
-                    await plugin.run(conn, m, { 
-                        args, 
-                        text: fullText, 
-                        command, 
-                        usedPrefix,
-                        groupMetadata: m.groupMetadata
-                    });
-                    console.log(chalk.green(`[OK] ${command} | ${m.sender.split('@')[0]}`));
-                } catch (err) {
-                    console.error(chalk.red(`[FALLO EN PLUGIN: ${name}]`), err);
-                    m.reply(config.msgs.error);
-                }
-                break; 
-            }
-        }
-    } catch (e) {
-        console.error(chalk.red('[ERROR CRÍTICO HANDLER]:'), e);
+    if (m.isGroup) {
+      const groupMetadata = await getGroupMetadata(conn, m.chat);
+      const participants = groupMetadata.participants || [];
+
+      const adminNums = participants
+        .filter(p => p.admin === 'admin' || p.admin === 'superadmin')
+        .map(p => jidToNum(p.id));
+
+      m.isAdmin = adminNums.includes(senderNum) || senderNum === botNum || m.isOwner;
+      m.botIsAdmin = adminNums.includes(botNum); // ⚠️ Baileys a veces falla aquí
+      m.groupMetadata = groupMetadata;
     }
+
+    const prefixMatch = body.trim().match(config.prefix);
+    if (!prefixMatch) return;
+
+    const usedPrefix = prefixMatch[0];
+    const textAfterPrefix = body.replace(usedPrefix, '').trim();
+    const args = textAfterPrefix.split(/ +/).filter(v => v);
+    const command = args.shift()?.toLowerCase();
+    const fullText = args.join(' ');
+
+    for (const name in plugins) {
+      const plugin = plugins[name];
+      if (!plugin || !plugin.command) continue;
+
+      const isMatch = Array.isArray(plugin.command)
+        ? plugin.command.includes(command)
+        : (plugin.command instanceof RegExp ? plugin.command.test(command) : plugin.command === command);
+
+      if (isMatch) {
+        if (plugin.admin && !m.isAdmin) return m.reply(config.msgs.admin);
+        if (plugin.rowner && !m.isOwner) return m.reply(config.msgs.owner);
+        if (plugin.group && !m.isGroup) return m.reply(config.msgs.group);
+
+        // ❗ No bloqueamos por botAdmin (Baileys bug). Dejamos que WhatsApp valide.
+        if (plugin.botAdmin && !m.botIsAdmin) {
+          console.log('[WARN] Baileys no detectó bot admin, intentando igual...');
+        }
+
+        try {
+          await plugin.run(conn, m, { args, text: fullText });
+          console.log(chalk.green('✓ CMD'), chalk.cyan(command), chalk.gray('|'), senderNum);
+        } catch (err) {
+          console.error(chalk.red(`[FALLO EN PLUGIN: ${name}]`), err);
+          m.reply('🤖 No tengo permisos para ejecutar esta acción en este grupo.');
+        }
+        break;
+      }
+    }
+  } catch (e) {
+    console.error(chalk.red('[ERROR CRÍTICO HANDLER]:'), e);
+  }
 }
